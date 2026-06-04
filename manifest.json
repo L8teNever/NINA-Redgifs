@@ -15,6 +15,11 @@
     "service_worker": "background.js"
   },
   "action": {
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    },
     "default_title": "Open RedStream Dashboard"
   },
   "content_scripts": [
@@ -23,20 +28,22 @@
         "*://*.redgifs.com/*"
       ],
       "js": [
-        "content_script.js"
-      ],
-      "run_at": "document_start",
-      "all_frames": false
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
         "main_world_hook.js"
       ],
+      "world": "MAIN",
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
       "matches": [
         "*://*.redgifs.com/*"
-      ]
+      ],
+      "js": [
+        "content_script.js"
+      ],
+      "world": "ISOLATED",
+      "run_at": "document_start",
+      "all_frames": false
     }
   ]
 }
