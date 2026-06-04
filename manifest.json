@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "RedStream",
+  "version": "1.0",
+  "description": "Background Scraper and Aggregator for RedGifs with a premium custom dashboard.",
+  "permissions": [
+    "tabs",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.redgifs.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open RedStream Dashboard"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.redgifs.com/*"
+      ],
+      "js": [
+        "content_script.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "main_world_hook.js"
+      ],
+      "matches": [
+        "*://*.redgifs.com/*"
+      ]
+    }
+  ]
+}
