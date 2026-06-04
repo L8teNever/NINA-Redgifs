@@ -1,5 +1,254 @@
 // RedStream - Stream Page Controller
 
+// Safely wrap or polyfill chrome extension APIs to prevent errors in non-extension, restricted, or invalidated contexts
+(function() {
+  const originalChrome = typeof window !== 'undefined' ? window.chrome : null;
+  const originalRuntime = originalChrome ? originalChrome.runtime : null;
+  const originalStorage = originalChrome ? originalChrome.storage : null;
+  const originalLocal = originalStorage ? originalStorage.local : null;
+  const originalOnChanged = originalStorage ? originalStorage.onChanged : null;
+
+  // Setup safe runtime
+  const safeRuntime = {
+    sendMessage: function(message, callback) {
+      try {
+        if (originalRuntime && originalRuntime.sendMessage) {
+          originalRuntime.sendMessage(message, (response) => {
+            if (originalRuntime.lastError) {
+              console.warn("[RedStream Polyfill] chrome.runtime.sendMessage lastError:", originalRuntime.lastError.message);
+              if (callback) callback({ success: false, error: originalRuntime.lastError.message });
+            } else if (callback) {
+              callback(response);
+            }
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn("[RedStream Polyfill] chrome.runtime.sendMessage failed, using fallback:", e.message);
+      }
+      if (callback) {
+        setTimeout(() => callback({ success: false, error: "Extension context unavailable" }), 0);
+      }
+    },
+    getURL: function(path) {
+      try {
+        if (originalRuntime && originalRuntime.getURL) {
+          return originalRuntime.getURL(path);
+        }
+      } catch (e) {}
+      return path;
+    },
+    get lastError() {
+      try {
+        return originalRuntime ? originalRuntime.lastError : null;
+      } catch (e) {
+        return null;
+      }
+    }
+  };
+
+  // LocalStorage Fallback helper functions
+  function fallbackGet(keys, callback) {
+    const res = {};
+    const keyList = Array.isArray(keys) ? keys : (typeof keys === 'string' ? [keys] : Object.keys(keys || {}));
+    keyList.forEach(key => {
+      try {
+        const val = localStorage.getItem('redstream_' + key);
+        if (val !== null) {
+          res[key] = JSON.parse(val);
+        } else if (keys && typeof keys === 'object' && !Array.isArray(keys)) {
+          res[key] = keys[key];
+        }
+      } catch (e) {
+        console.error("[RedStream Polyfill] Error loading key " + key + " from localStorage:", e);
+      }
+    });
+    if (callback) {
+      setTimeout(() => callback(res), 0);
+    }
+  }
+
+  function fallbackSet(items, callback) {
+    for (const key in items) {
+      try {
+        localStorage.setItem('redstream_' + key, JSON.stringify(items[key]));
+      } catch (e) {
+        console.error("[RedStream Polyfill] Error saving key " + key + " to localStorage:", e);
+      }
+    }
+    if (callback) {
+      setTimeout(() => callback(), 0);
+    }
+  }
+
+  function fallbackRemove(keys, callback) {
+    const keyList = Array.isArray(keys) ? keys : [keys];
+    keyList.forEach(key => {
+      try {
+        localStorage.removeItem('redstream_' + key);
+      } catch (e) {
+        console.error("[RedStream Polyfill] Error removing key " + key + " from localStorage:", e);
+      }
+    });
+    if (callback) {
+      setTimeout(() => callback(), 0);
+    }
+  }
+
+  const mockListeners = [];
+
+  const safeStorageLocal = {
+    get: function(keys, callback) {
+      try {
+        if (originalLocal && originalLocal.get) {
+          originalLocal.get(keys, (res) => {
+            if (originalRuntime && originalRuntime.lastError) {
+              console.warn("[RedStream Polyfill] chrome.storage.local.get lastError:", originalRuntime.lastError.message);
+              fallbackGet(keys, callback);
+            } else if (callback) {
+              callback(res);
+            }
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn("[RedStream Polyfill] chrome.storage.local.get failed, using fallback:", e.message);
+      }
+      fallbackGet(keys, callback);
+    },
+    set: function(items, callback) {
+      try {
+        if (originalLocal && originalLocal.set) {
+          originalLocal.set(items, () => {
+            if (originalRuntime && originalRuntime.lastError) {
+              console.warn("[RedStream Polyfill] chrome.storage.local.set lastError:", originalRuntime.lastError.message);
+              fallbackSet(items, callback);
+            } else {
+              triggerOnChangedListeners(items);
+              if (callback) callback();
+            }
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn("[RedStream Polyfill] chrome.storage.local.set failed, using fallback:", e.message);
+      }
+      fallbackSet(items, callback);
+      triggerOnChangedListeners(items);
+    },
+    remove: function(keys, callback) {
+      try {
+        if (originalLocal && originalLocal.remove) {
+          originalLocal.remove(keys, () => {
+            if (originalRuntime && originalRuntime.lastError) {
+              console.warn("[RedStream Polyfill] chrome.storage.local.remove lastError:", originalRuntime.lastError.message);
+              fallbackRemove(keys, callback);
+            } else if (callback) {
+              callback();
+            }
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn("[RedStream Polyfill] chrome.storage.local.remove failed, using fallback:", e.message);
+      }
+      fallbackRemove(keys, callback);
+    }
+  };
+
+  function triggerOnChangedListeners(items) {
+    const changes = {};
+    for (const key in items) {
+      changes[key] = { newValue: items[key] };
+    }
+    mockListeners.forEach(listener => {
+      try { listener(changes); } catch (e) { console.error(e); }
+    });
+  }
+
+  const safeStorage = {
+    local: safeStorageLocal,
+    onChanged: {
+      addListener: function(listener) {
+        try {
+          if (originalOnChanged && originalOnChanged.addListener) {
+            originalOnChanged.addListener(listener);
+          }
+        } catch (e) {
+          console.warn("[RedStream Polyfill] chrome.storage.onChanged.addListener failed:", e.message);
+        }
+        mockListeners.push(listener);
+      },
+      removeListener: function(listener) {
+        try {
+          if (originalOnChanged && originalOnChanged.removeListener) {
+            originalOnChanged.removeListener(listener);
+          }
+        } catch (e) {
+          console.warn("[RedStream Polyfill] chrome.storage.onChanged.removeListener failed:", e.message);
+        }
+        const idx = mockListeners.indexOf(listener);
+        if (idx !== -1) mockListeners.splice(idx, 1);
+      }
+    }
+  };
+
+  // Reconstruct window.chrome safely
+  if (originalChrome) {
+    try {
+      Object.defineProperty(originalChrome, 'runtime', {
+        value: { ...(originalChrome.runtime || {}), ...safeRuntime },
+        writable: true,
+        configurable: true
+      });
+      Object.defineProperty(originalChrome, 'storage', {
+        value: { ...(originalChrome.storage || {}), ...safeStorage },
+        writable: true,
+        configurable: true
+      });
+    } catch (e) {
+      try {
+        const mergedChrome = {
+          ...originalChrome,
+          runtime: { ...(originalChrome.runtime || {}), ...safeRuntime },
+          storage: { ...(originalChrome.storage || {}), ...safeStorage, local: safeStorageLocal }
+        };
+        window.chrome = mergedChrome;
+      } catch (err) {
+        console.error("[RedStream Polyfill] Failed to write to window.chrome:", err);
+      }
+    }
+  } else {
+    try {
+      window.chrome = {
+        runtime: safeRuntime,
+        storage: safeStorage
+      };
+    } catch (err) {
+      console.error("[RedStream Polyfill] Failed to create window.chrome:", err);
+    }
+  }
+})();
+
+let hasUserInteracted = false;
+function handleUserInteraction() {
+  if (hasUserInteracted) return;
+  hasUserInteracted = true;
+  console.log("[RedStream] User interaction detected, enabling sound unmuting.");
+  
+  document.removeEventListener('click', handleUserInteraction, { capture: true });
+  document.removeEventListener('touchstart', handleUserInteraction, { capture: true });
+  document.removeEventListener('keydown', handleUserInteraction, { capture: true });
+  
+  // Trigger updateUI on all active slides
+  document.querySelectorAll('video').forEach(video => {
+    video.dispatchEvent(new CustomEvent('user-interacted'));
+  });
+}
+document.addEventListener('click', handleUserInteraction, { capture: true, passive: true });
+document.addEventListener('touchstart', handleUserInteraction, { capture: true, passive: true });
+document.addEventListener('keydown', handleUserInteraction, { capture: true, passive: true });
+
 const state = {
   bookmarks: {},
   settings: { quality: 'sd', autoplayHover: true, muteDefault: true },
@@ -615,7 +864,8 @@ function setupStreamObserver() {
       const seenBar = entry.target.querySelector('.stream-seen-bar');
 
       if (entry.isIntersecting) {
-        video.muted = state.settings.muteDefault;
+        const canUnmute = hasUserInteracted || (typeof navigator !== 'undefined' && navigator.userActivation && navigator.userActivation.hasBeenActive);
+        video.muted = !canUnmute || state.settings.muteDefault;
         video.play().catch(e => {});
         entry.target.classList.remove('paused');
 
@@ -673,7 +923,8 @@ function playFirstStreamVideo() {
   if (!firstSlide) return;
   const video = firstSlide.querySelector('video');
   if (video) {
-    video.muted = state.settings.muteDefault;
+    const canUnmute = hasUserInteracted || (typeof navigator !== 'undefined' && navigator.userActivation && navigator.userActivation.hasBeenActive);
+    video.muted = !canUnmute || state.settings.muteDefault;
     video.play().catch(e => {});
   }
   // Seen tracking handled by the observer with 1-second delay
@@ -800,9 +1051,11 @@ function setupVolumeControl(card, video) {
   function updateUI() {
     volSlider.value = currentVolume;
     video.volume = currentVolume;
-    video.muted = isMuted;
 
-    if (isMuted || currentVolume === 0) {
+    const canUnmute = hasUserInteracted || (typeof navigator !== 'undefined' && navigator.userActivation && navigator.userActivation.hasBeenActive);
+    video.muted = !canUnmute || isMuted;
+
+    if (video.muted || currentVolume === 0) {
       volIcon.innerHTML = volMuteSvg;
     } else {
       volIcon.innerHTML = volUpSvg;
@@ -828,10 +1081,12 @@ function setupVolumeControl(card, video) {
     }
   };
   chrome.storage.onChanged.addListener(storageListener);
+  video.addEventListener('user-interacted', updateUI);
 
   // Clean up listener when card/video is removed (prevent memory leak)
   video.addEventListener('remove', () => {
     chrome.storage.onChanged.removeListener(storageListener);
+    video.removeEventListener('user-interacted', updateUI);
   }, { once: true });
 
   // Slider input

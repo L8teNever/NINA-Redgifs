@@ -29,17 +29,6 @@
         "*://*.redgifs.com/*"
       ],
       "js": [
-        "main_world_hook.js"
-      ],
-      "world": "MAIN",
-      "run_at": "document_start",
-      "all_frames": false
-    },
-    {
-      "matches": [
-        "*://*.redgifs.com/*"
-      ],
-      "js": [
         "content_script.js"
       ],
       "world": "ISOLATED",
@@ -56,17 +45,18 @@
       "world": "ISOLATED",
       "run_at": "document_end",
       "all_frames": false
-    },
+    }
+  ],
+  "web_accessible_resources": [
     {
-      "matches": [
-        "*://redgifs.l8tenever.com/Nina/*"
-      ],
-      "js": [
+      "resources": [
+        "main_world_hook.js",
         "l8tenever_main_world.js"
       ],
-      "world": "MAIN",
-      "run_at": "document_start",
-      "all_frames": false
+      "matches": [
+        "*://*.redgifs.com/*",
+        "*://redgifs.l8tenever.com/*"
+      ]
     }
   ]
 }

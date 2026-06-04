@@ -2,6 +2,18 @@
 
 console.log("RedStream isolated content script loaded");
 
+// Inject the main world hook script to intercept fetch and XHR calls
+try {
+  const script = document.createElement('script');
+  script.src = chrome.runtime.getURL('main_world_hook.js');
+  (document.head || document.documentElement).appendChild(script);
+  script.onload = () => {
+    script.remove();
+  };
+} catch (e) {
+  console.error("Failed to inject main_world_hook.js:", e);
+}
+
 // Set to keep track of scraped video IDs to prevent duplicates
 const processedIds = new Set();
 window._hasFetchedPageDirectly = false;
