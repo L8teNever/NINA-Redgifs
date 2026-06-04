@@ -162,6 +162,8 @@ function renderStreamNicheChecklist() {
   } else {
     state.streamNiches = state.niches.map(n => n.tag);
   }
+  // Sync to chrome.storage.local for external page access
+  chrome.storage.local.set({ redstream_stream_niches: state.streamNiches });
 
   state.niches.forEach(niche => {
     const isChecked = state.streamNiches.includes(niche.tag);
@@ -181,6 +183,7 @@ function renderStreamNicheChecklist() {
         state.streamNiches = state.streamNiches.filter(t => t !== niche.tag);
       }
       localStorage.setItem('redstream_stream_niches', JSON.stringify(state.streamNiches));
+      chrome.storage.local.set({ redstream_stream_niches: state.streamNiches });
     });
     container.appendChild(item);
   });
@@ -323,51 +326,59 @@ function createStreamSlide(video) {
   const likeCount = video.likes ? formatCount(video.likes) : '0';
 
   slide.innerHTML = `
-    <div class="stream-seen-bar"></div>
-    <div class="stream-speed-badge hide">2×</div>
     <video loop playsinline muted poster="${video.poster}">
       <source src="${videoSrc}" type="video/mp4">
     </video>
-    <div class="stream-slide-loader">
-      <div class="spinner" style="width:32px;height:32px;border-width:3px;"></div>
-    </div>
-    <div class="stream-play-overlay">
-      <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-    </div>
-    <div class="stream-overlay-bottom">
-      <div class="stream-creator">@${video.userName || 'anonymous'}</div>
-      <h3>${video.title || 'RedGifs Video'}</h3>
-      <div class="stream-meta">
-        <span>👁️ ${viewCount}</span>
-        <span>❤️ <span class="stream-like-count">${likeCount}</span></span>
+    <div class="video-overlay-wrapper">
+      <div class="stream-seen-bar"></div>
+      <div class="stream-speed-badge hide">2×</div>
+      <div class="stream-slide-loader">
+        <div class="spinner" style="width:32px;height:32px;border-width:3px;"></div>
       </div>
-      <div class="stream-tags">${tagsHtml}</div>
-    </div>
-    <div class="stream-overlay-right">
-      <div class="stream-btn-wrapper">
-        <button class="stream-circle-btn stream-heart-btn ${isBookmarked ? 'bookmarked' : ''}">
-          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="heart-svg"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-        </button>
-        <span class="stream-btn-label">Save</span>
+      <div class="stream-play-overlay">
+        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
       </div>
-      <div class="stream-btn-wrapper">
-        <button class="stream-circle-btn stream-mute-btn ${state.settings.muteDefault ? 'active' : ''}">
-          <svg class="vol-on-icon ${state.settings.muteDefault ? 'hide' : ''}" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-          <svg class="vol-off-icon ${state.settings.muteDefault ? '' : 'hide'}" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
-        </button>
-        <span class="stream-btn-label">${state.settings.muteDefault ? 'Muted' : 'Sound'}</span>
+      <div class="stream-overlay-bottom">
+        <div class="stream-creator">@${video.userName || 'anonymous'}</div>
+        <h3>${video.title || 'RedGifs Video'}</h3>
+        <div class="stream-meta">
+          <span>👁️ ${viewCount}</span>
+          <span>❤️ <span class="stream-like-count">${likeCount}</span></span>
+        </div>
+        <div class="stream-tags">${tagsHtml}</div>
       </div>
-      <div class="stream-btn-wrapper">
-        <button class="stream-circle-btn stream-share-btn">
-          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
-        </button>
-        <span class="stream-btn-label">Link</span>
+      <div class="stream-overlay-right">
+        <div class="stream-btn-wrapper">
+          <button class="stream-circle-btn stream-heart-btn ${isBookmarked ? 'bookmarked' : ''}">
+            <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="heart-svg"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          </button>
+          <span class="stream-btn-label">Save</span>
+        </div>
+        <div class="stream-btn-wrapper">
+          <button class="stream-circle-btn stream-mute-btn ${state.settings.muteDefault ? 'active' : ''}">
+            <svg class="vol-on-icon ${state.settings.muteDefault ? 'hide' : ''}" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            <svg class="vol-off-icon ${state.settings.muteDefault ? '' : 'hide'}" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+          </button>
+          <span class="stream-btn-label">${state.settings.muteDefault ? 'Muted' : 'Sound'}</span>
+        </div>
+        <div class="stream-btn-wrapper">
+          <button class="stream-circle-btn stream-share-btn">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+          </button>
+          <span class="stream-btn-label">Link</span>
+        </div>
+        <div class="stream-btn-wrapper">
+          <a href="${video.src}" class="stream-circle-btn stream-download-btn" download target="_blank">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </a>
+          <span class="stream-btn-label">Get</span>
+        </div>
       </div>
-      <div class="stream-btn-wrapper">
-        <a href="${video.src}" class="stream-circle-btn stream-download-btn" download target="_blank">
-          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-        </a>
-        <span class="stream-btn-label">Get</span>
+      <div class="video-timeline-container">
+        <div class="video-timeline-track">
+          <div class="video-timeline-fill"></div>
+          <div class="video-timeline-handle"></div>
+        </div>
       </div>
     </div>
   `;
@@ -381,54 +392,153 @@ function createStreamSlide(video) {
   videoEl.addEventListener('canplay', () => slideLoader.classList.add('hide'));
   videoEl.addEventListener('error', () => slideLoader.classList.add('hide'));
 
+  // Setup dynamic aspect ratio
+  function updateAspect() {
+    if (videoEl.videoWidth && videoEl.videoHeight) {
+      slide.style.setProperty('--video-aspect', `${videoEl.videoWidth} / ${videoEl.videoHeight}`);
+      slide.classList.add('has-aspect');
+      syncWrapperSize(slide, videoEl);
+    }
+  }
+  videoEl.addEventListener('loadedmetadata', updateAspect);
+  videoEl.addEventListener('playing', () => syncWrapperSize(slide, videoEl));
+  window.addEventListener('resize', () => syncWrapperSize(slide, videoEl));
+  if (videoEl.readyState >= 1) {
+    updateAspect();
+  }
+
+  // Setup progress timeline update
+  const timelineContainer = slide.querySelector('.video-timeline-container');
+  const timelineFill = slide.querySelector('.video-timeline-fill');
+  const timelineHandle = slide.querySelector('.video-timeline-handle');
+
+  videoEl.addEventListener('timeupdate', () => {
+    if (videoEl.duration) {
+      const pct = (videoEl.currentTime / videoEl.duration) * 100;
+      timelineFill.style.width = pct + '%';
+      timelineHandle.style.left = pct + '%';
+    }
+  });
+
+  setupScrubbing(timelineContainer, videoEl);
+
+  // Setup volume control slider overlay
+  setupVolumeControl(slide, videoEl);
+
+  // Setup speed controls (2x hold speed gesture)
   const speedBadge = slide.querySelector('.stream-speed-badge');
   let holdTimer = null;
   let isHolding = false;
+  let isHoldingTriggered = false;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  const touchThreshold = 10;
 
   function startHold() {
     holdTimer = setTimeout(() => {
       isHolding = true;
-      videoEl.playbackRate = 2.0;
+      const currentVideo = slide.querySelector('video');
+      if (currentVideo) {
+        currentVideo.playbackRate = 2.0;
+      }
       speedBadge.classList.remove('hide');
-    }, 180);
+    }, 200);
   }
 
   function endHold() {
-    clearTimeout(holdTimer);
+    if (holdTimer) {
+      clearTimeout(holdTimer);
+      holdTimer = null;
+    }
     if (isHolding) {
       isHolding = false;
-      videoEl.playbackRate = 1.0;
+      const currentVideo = slide.querySelector('video');
+      if (currentVideo) {
+        currentVideo.playbackRate = 1.0;
+      }
       speedBadge.classList.add('hide');
+      isHoldingTriggered = true;
     } else {
       // Quick tap → toggle play/pause
-      if (videoEl.paused) {
-        videoEl.play().catch(e => {});
-        slide.classList.remove('paused');
-      } else {
-        videoEl.pause();
-        slide.classList.add('paused');
+      const currentVideo = slide.querySelector('video');
+      if (currentVideo) {
+        if (currentVideo.paused) {
+          currentVideo.play().catch(e => {});
+          slide.classList.remove('paused');
+        } else {
+          currentVideo.pause();
+          slide.classList.add('paused');
+        }
       }
     }
   }
 
   function cancelHold() {
-    clearTimeout(holdTimer);
+    if (holdTimer) {
+      clearTimeout(holdTimer);
+      holdTimer = null;
+    }
     if (isHolding) {
       isHolding = false;
-      videoEl.playbackRate = 1.0;
+      const currentVideo = slide.querySelector('video');
+      if (currentVideo) {
+        currentVideo.playbackRate = 1.0;
+      }
       speedBadge.classList.add('hide');
     }
   }
 
-  // Mouse hold
-  videoEl.addEventListener('mousedown', startHold);
-  videoEl.addEventListener('mouseup', endHold);
-  videoEl.addEventListener('mouseleave', cancelHold);
+  // Mouse hold events
+  slide.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return; // Only left click
+    if (e.target.closest('.stream-overlay-right') || e.target.closest('.video-timeline-container') || e.target.closest('.video-volume-control') || e.target.closest('.stream-overlay-bottom')) {
+      return;
+    }
+    startHold();
+  });
+  slide.addEventListener('mouseup', endHold);
+  slide.addEventListener('mouseleave', cancelHold);
 
-  // Touch hold (mobile)
-  videoEl.addEventListener('touchstart', (e) => { e.preventDefault(); startHold(); }, { passive: false });
-  videoEl.addEventListener('touchend', endHold);
-  videoEl.addEventListener('touchcancel', cancelHold);
+  // Touch hold events (mobile scroll-friendly)
+  slide.addEventListener('touchstart', (e) => {
+    if (e.target.closest('.stream-overlay-right') || e.target.closest('.video-timeline-container') || e.target.closest('.video-volume-control') || e.target.closest('.stream-overlay-bottom')) {
+      return;
+    }
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    startHold();
+  }, { passive: true });
+
+  slide.addEventListener('touchmove', (e) => {
+    if (holdTimer) {
+      const touch = e.touches[0];
+      const diffX = Math.abs(touch.clientX - touchStartX);
+      const diffY = Math.abs(touch.clientY - touchStartY);
+      if (diffX > touchThreshold || diffY > touchThreshold) {
+        cancelHold();
+      }
+    }
+  }, { passive: true });
+
+  slide.addEventListener('touchend', (e) => {
+    if (isHolding) {
+      endHold();
+      e.preventDefault();
+    } else {
+      endHold();
+    }
+  });
+  slide.addEventListener('touchcancel', cancelHold);
+
+  // Click capturing phase to prevent pause toggles on long-press release
+  slide.addEventListener('click', (e) => {
+    if (isHoldingTriggered) {
+      e.stopPropagation();
+      e.preventDefault();
+      isHoldingTriggered = false;
+    }
+  }, true);
 
   const heartBtn = slide.querySelector('.stream-heart-btn');
   heartBtn.addEventListener('click', () => {
@@ -598,4 +708,170 @@ function showToast(message) {
 
 function copyToClipboard(text, successMessage) {
   navigator.clipboard.writeText(text).then(() => showToast(successMessage)).catch(err => console.error("Clipboard copy failed:", err));
+}
+
+// Scrubbing Helper for video timeline
+function setupScrubbing(timelineContainer, video) {
+  let isScrubbing = false;
+
+  function updateVideoTime(e) {
+    const track = timelineContainer.querySelector('.video-timeline-track');
+    const rect = track.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const pos = (clientX - rect.left) / rect.width;
+    const percentage = Math.max(0, Math.min(1, pos));
+    if (video.duration) {
+      video.currentTime = percentage * video.duration;
+    }
+  }
+
+  timelineContainer.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return; // Only left click
+    isScrubbing = true;
+    timelineContainer.classList.add('scrubbing');
+    updateVideoTime(e);
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (isScrubbing) {
+      updateVideoTime(e);
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isScrubbing) {
+      isScrubbing = false;
+      timelineContainer.classList.remove('scrubbing');
+    }
+  });
+
+  // Touch support for mobile scrubbing
+  timelineContainer.addEventListener('touchstart', (e) => {
+    isScrubbing = true;
+    timelineContainer.classList.add('scrubbing');
+    updateVideoTime(e);
+  }, { passive: true });
+
+  window.addEventListener('touchmove', (e) => {
+    if (isScrubbing) {
+      updateVideoTime(e);
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', () => {
+    if (isScrubbing) {
+      isScrubbing = false;
+      timelineContainer.classList.remove('scrubbing');
+    }
+  });
+}
+
+// Volume Control Helper (volume slider and mute toggle)
+function setupVolumeControl(card, video) {
+  const container = card.querySelector('.video-overlay-wrapper') || card;
+  let volumeControl = container.querySelector('.video-volume-control');
+  if (volumeControl) return;
+
+  volumeControl = document.createElement('div');
+  volumeControl.className = 'video-volume-control';
+  volumeControl.innerHTML = `
+    <button class="video-volume-btn">
+      <svg class="vol-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Will be dynamically updated -->
+      </svg>
+    </button>
+    <div class="video-volume-slider-wrapper">
+      <input type="range" class="video-volume-slider" min="0" max="1" step="0.05" value="1">
+    </div>
+  `;
+
+  container.appendChild(volumeControl);
+
+  const volBtn = volumeControl.querySelector('.video-volume-btn');
+  const volIcon = volumeControl.querySelector('.vol-icon');
+  const volSlider = volumeControl.querySelector('.video-volume-slider');
+
+  const volUpSvg = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>`;
+  const volMuteSvg = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>`;
+
+  let currentVolume = 1.0;
+  let isMuted = true;
+
+  function updateUI() {
+    volSlider.value = currentVolume;
+    video.volume = currentVolume;
+    video.muted = isMuted;
+
+    if (isMuted || currentVolume === 0) {
+      volIcon.innerHTML = volMuteSvg;
+    } else {
+      volIcon.innerHTML = volUpSvg;
+    }
+  }
+
+  // Load from storage
+  chrome.storage.local.get(['redstream_volume', 'redstream_muted'], (res) => {
+    if (res.redstream_volume !== undefined) currentVolume = res.redstream_volume;
+    if (res.redstream_muted !== undefined) isMuted = res.redstream_muted;
+    updateUI();
+  });
+
+  // Sync across playing slides
+  const storageListener = (changes) => {
+    if (changes.redstream_volume) {
+      currentVolume = changes.redstream_volume.newValue;
+      updateUI();
+    }
+    if (changes.redstream_muted) {
+      isMuted = changes.redstream_muted.newValue;
+      updateUI();
+    }
+  };
+  chrome.storage.onChanged.addListener(storageListener);
+
+  // Clean up listener when card/video is removed (prevent memory leak)
+  video.addEventListener('remove', () => {
+    chrome.storage.onChanged.removeListener(storageListener);
+  }, { once: true });
+
+  // Slider input
+  volSlider.addEventListener('input', (e) => {
+    e.stopPropagation();
+    currentVolume = parseFloat(volSlider.value);
+    isMuted = (currentVolume === 0);
+    
+    chrome.storage.local.set({
+      redstream_volume: currentVolume,
+      redstream_muted: isMuted
+    });
+    
+    updateUI();
+  });
+
+  // Button click
+  volBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    isMuted = !isMuted;
+    if (!isMuted && currentVolume === 0) {
+      currentVolume = 0.5;
+    }
+    
+    chrome.storage.local.set({
+      redstream_volume: currentVolume,
+      redstream_muted: isMuted
+    });
+    
+    updateUI();
+  });
+}
+
+function syncWrapperSize(slide, video) {
+  const wrapper = slide.querySelector('.video-overlay-wrapper');
+  if (!wrapper) return;
+  const w = video.offsetWidth || video.clientWidth;
+  const h = video.offsetHeight || video.clientHeight;
+  if (w && h) {
+    wrapper.style.setProperty('width', w + 'px', 'important');
+    wrapper.style.setProperty('height', h + 'px', 'important');
+  }
 }

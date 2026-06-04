@@ -9,7 +9,8 @@
     "scripting"
   ],
   "host_permissions": [
-    "*://*.redgifs.com/*"
+    "*://*.redgifs.com/*",
+    "*://redgifs.l8tenever.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -42,6 +43,28 @@
         "content_script.js"
       ],
       "world": "ISOLATED",
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "*://redgifs.l8tenever.com/Nina/*"
+      ],
+      "js": [
+        "l8tenever_content_script.js"
+      ],
+      "world": "ISOLATED",
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "*://redgifs.l8tenever.com/Nina/*"
+      ],
+      "js": [
+        "l8tenever_main_world.js"
+      ],
+      "world": "MAIN",
       "run_at": "document_start",
       "all_frames": false
     }

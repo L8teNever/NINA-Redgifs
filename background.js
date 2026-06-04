@@ -93,7 +93,9 @@ function scrapeTab(msg, respond, returnTabId) {
 
     // Immediately refocus the extension tab so mobile users aren't interrupted
     if (returnTabId) {
-      chrome.tabs.update(returnTabId, { active: true }, () => {});
+      chrome.tabs.update(returnTabId, { active: true }, () => {
+        const err = chrome.runtime.lastError;
+      });
     }
 
     activeScrapes.set(tab.id, {
@@ -112,7 +114,9 @@ function scrapeTab(msg, respond, returnTabId) {
 function doneScrape(tabId, s) {
   activeScrapes.delete(tabId);
   clearTimeout(s.timer);
-  chrome.tabs.remove(tabId, () => {});
+  chrome.tabs.remove(tabId, () => {
+    const err = chrome.runtime.lastError;
+  });
   const ex = new Set(s.config.excludeIds);
   s.respond({ success: true, videos: s.videos.filter(v => !ex.has(v.id)) });
 }
@@ -129,7 +133,9 @@ function nichesTab(msg, respond, returnTabId) {
     }
 
     if (returnTabId) {
-      chrome.tabs.update(returnTabId, { active: true }, () => {});
+      chrome.tabs.update(returnTabId, { active: true }, () => {
+        const err = chrome.runtime.lastError;
+      });
     }
 
     activeNichesScrapes.set(tab.id, {
@@ -148,6 +154,8 @@ function nichesTab(msg, respond, returnTabId) {
 function doneNiches(tabId, s) {
   activeNichesScrapes.delete(tabId);
   clearTimeout(s.timer);
-  chrome.tabs.remove(tabId, () => {});
+  chrome.tabs.remove(tabId, () => {
+    const err = chrome.runtime.lastError;
+  });
   s.respond({ success: true, niches: s.niches });
 }

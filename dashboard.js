@@ -154,6 +154,8 @@ function loadSettings() {
       console.error("Error parsing settings:", e);
     }
   }
+  // Sync to chrome.storage.local to make it accessible to content scripts on other domains
+  chrome.storage.local.set({ redstream_settings: state.settings });
   
   // Update UI Elements
   elements.qualityPref.value = state.settings.quality;
@@ -164,6 +166,7 @@ function loadSettings() {
 // Save Settings to LocalStorage
 function saveSettings() {
   localStorage.setItem('redstream_settings', JSON.stringify(state.settings));
+  chrome.storage.local.set({ redstream_settings: state.settings });
 }
 
 // Load Bookmarks from chrome.storage
@@ -1343,6 +1346,7 @@ async function removeNiche(tag) {
   // Also clean streamNiches selection and save
   state.streamNiches = state.streamNiches.filter(t => t !== tag);
   localStorage.setItem('redstream_stream_niches', JSON.stringify(state.streamNiches));
+  chrome.storage.local.set({ redstream_stream_niches: state.streamNiches });
   renderStreamNicheChecklist();
   
   showToast("Nische gelöscht.");
@@ -1449,6 +1453,7 @@ function fetchNiches(isAppend = false) {
           }
         });
         renderCatalogNiches();
+        chrome.storage.local.set({ redstream_catalog_niches: state.catalogNiches });
         showToast(`${added} neue Nischen geladen!`);
         if (added === 0) {
           showToast("Keine weiteren neuen Nischen gefunden.");
@@ -1456,6 +1461,7 @@ function fetchNiches(isAppend = false) {
       } else {
         state.catalogNiches = response.niches;
         renderCatalogNiches();
+        chrome.storage.local.set({ redstream_catalog_niches: state.catalogNiches });
         showToast(`${response.niches.length} Nischen geladen!`);
       }
     } else {
@@ -1511,6 +1517,8 @@ function renderStreamNicheChecklist() {
   } else {
     state.streamNiches = state.niches.map(n => n.tag);
   }
+  // Sync stream niches to chrome.storage.local for content script access
+  chrome.storage.local.set({ redstream_stream_niches: state.streamNiches });
   
   state.niches.forEach(niche => {
     const isChecked = state.streamNiches.includes(niche.tag);
@@ -1536,6 +1544,7 @@ function renderStreamNicheChecklist() {
       
       // Save selection
       localStorage.setItem('redstream_stream_niches', JSON.stringify(state.streamNiches));
+      chrome.storage.local.set({ redstream_stream_niches: state.streamNiches });
     });
     
     container.appendChild(item);
